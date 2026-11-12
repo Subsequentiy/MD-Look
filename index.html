@@ -3,6 +3,9 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="application-name" content="MD Look">
+<meta name="version" content="1.1.0">
+<meta name="build" content="2026-11-12">
 <title>MD Look</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='5' fill='%230969da'/%3E%3Ctext x='12' y='17' font-size='10' font-family='Arial' font-weight='bold' fill='white' text-anchor='middle'%3EMD%3C/text%3E%3C/svg%3E">
 <script>
@@ -225,6 +228,21 @@ details.tree-dir > summary .icon { color: var(--muted); }
 .file-item.active .icon { color: var(--accent); }
 .file-item .fname { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .file-item .fdir { font-size: 11px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* 文件选中框 */
+.file-icon { display: inline-flex; flex: none; }
+.file-check {
+  flex: none; width: 15px; height: 15px; border-radius: 4px;
+  border: 1.5px solid var(--border-strong); background: var(--bg);
+  display: inline-flex; align-items: center; justify-content: center;
+  cursor: pointer; transition: background .12s, border-color .12s;
+}
+.file-check:hover { border-color: var(--accent); }
+.file-check .icon { width: 10px; height: 10px; color: #fff; display: none; }
+.file-check.on { background: var(--accent); border-color: var(--accent); }
+.file-check.on .icon { display: block; }
+.file-item.selected { background: var(--bg-hover); }
+.file-item.selected .fname { color: var(--text); }
 .flat-section { padding: 2px 0; }
 .flat-heading { font-size: 11px; color: var(--muted); padding: 8px 8px 3px; font-weight: 600; letter-spacing: .04em; }
 
@@ -246,6 +264,11 @@ details.tree-dir > summary .icon { color: var(--muted); }
   flex: none; padding: 8px 12px; border-top: 1px solid var(--border);
   font-size: 11.5px; color: var(--muted); line-height: 1.6;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.sidebar-foot .ver {
+  display: inline-block; margin-left: 4px; padding: 0 6px; border-radius: 999px;
+  background: var(--bg-active); color: var(--accent);
+  font-size: 10.5px; font-weight: 600; letter-spacing: .02em;
 }
 
 /* ============ 内容区 ============ */
@@ -501,7 +524,7 @@ html[data-theme="dark"] #toast { background: #e6edf3; color: #0d1117; }
           <span>文件</span>
           <span class="panel-title-right">
             <span class="count" id="fileCount">0</span>
-            <button class="panel-clear" id="btnClearFiles" title="清除全部文件" aria-label="清除全部文件" disabled>
+            <button class="panel-clear" id="btnClearFiles" title="清除选中的文件" aria-label="清除选中的文件" disabled>
               <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>
             </button>
           </span>
@@ -513,6 +536,7 @@ html[data-theme="dark"] #toast { background: #e6edf3; color: #0d1117; }
         <nav class="outline-list" id="outlineList"></nav>
       </div>
       <div class="sidebar-foot" id="docMeta">全部在本地浏览器中完成 · 不上传任何文件</div>
+      <div class="sidebar-foot" id="appFoot" style="border-top:0;padding-top:0">MD Look<span class="ver" id="appVersion">v1.1.0</span></div>
     </aside>
 
     <div class="content-wrap" id="contentWrap">
@@ -1834,6 +1858,7 @@ return He}()
     current: null,
     headings: [],
     query: '',
+    selected: new Set(),         // 已勾选的文件 key
     scrollMemory: new Map()
   };
 
@@ -2164,25 +2189,97 @@ return He}()
     state.docMap.clear();
     state.assets.clear();
     state.assetBase.clear();
+    state.selected.clear();
     state.scrollMemory.clear();
     state.urls.forEach(u => { try { URL.revokeObjectURL(u); } catch (e) { /* ignore */ } });
     state.urls.clear();
     state.current = null;
   }
 
-  // 侧栏「清除」按钮：把已加载的文件和当前文档全部清掉，回到初始空白状态
-  function clearLibrary() {
-    if (!state.docs.length) return;
-    resetLibrary();
-    state.query = '';
-    const si = $('#searchInput');
-    if (si) si.value = '';
-    $('#searchClear').classList.remove('show');
-    $('#content').innerHTML = '';
-    $('#sourceView').value = '';
-    if (document.body.classList.contains('source-mode')) setSourceMode(false);
+  /* ---------------- 选中 & 按选中删除 ---------------- */
+  function updateClearBtn() {
+    const btn = $('#btnClearFiles');
+    if (!btn) return;
+    const n = state.selected.size;
+    btn.disabled = n === 0;
+    const label = n ? ('清除选中的 ' + n + ' 个文件') : '清除选中的文件';
+    btn.title = label;
+    btn.setAttribute('aria-label', label);
+  }
+
+  function toggleSelect(key) {
+    if (state.selected.has(key)) state.selected.delete(key);
+    else state.selected.add(key);
+    syncSelectUI();
+    updateClearBtn();
+  }
+
+  function syncSelectUI() {
+    $$('#fileList .file-item').forEach(el => {
+      const on = state.selected.has(el.dataset.key);
+      el.classList.toggle('selected', on);
+      const box = el.querySelector('.file-check');
+      if (box) {
+        box.classList.toggle('on', on);
+        box.setAttribute('aria-checked', on ? 'true' : 'false');
+      }
+    });
+  }
+
+  function selectAll(on) {
+    state.selected.clear();
+    if (on) state.docs.forEach(d => state.selected.add(d.key));
+    syncSelectUI();
+    updateClearBtn();
+  }
+
+  // 从库里移除单个文档（含它的资源映射与 blob url）
+  function removeDoc(key) {
+    const idx = state.docs.findIndex(d => d.key === key);
+    if (idx < 0) return null;
+    const doc = state.docs[idx];
+    state.docs.splice(idx, 1);
+    state.docMap.delete(key);
+    state.selected.delete(key);
+    state.scrollMemory.delete(key);
+
+    const low = doc.rel.toLowerCase();
+    const url = state.urls.get(low);
+    if (url) { try { URL.revokeObjectURL(url); } catch (e) { /* ignore */ } state.urls.delete(low); }
+    state.assets.delete(low);
+    const bn = basename(low);
+    const arr = state.assetBase.get(bn);
+    if (arr) {
+      const next = arr.filter(f => f !== doc.file);
+      if (next.length) state.assetBase.set(bn, next);
+      else state.assetBase.delete(bn);
+    }
+    return doc;
+  }
+
+  // 侧栏「清除」按钮：只删掉已勾选的文件
+  function clearSelected() {
+    const keys = Array.from(state.selected);
+    if (!keys.length) { toast('请先勾选要清除的文件'); return; }
+
+    const curRemoved = !!state.current && keys.indexOf(state.current) >= 0;
+    keys.forEach(removeDoc);
+
+    if (curRemoved) {
+      $('#content').innerHTML = '';
+      $('#sourceView').value = '';
+      if (document.body.classList.contains('source-mode')) setSourceMode(false);
+      state.current = null;
+    }
+
     refreshLibraryUI();
-    toast('已清除全部文件');
+    renderFileList();
+
+    if (curRemoved) {
+      if (state.docs.length) openDoc(state.docs[0].key);
+      else document.title = 'MD Look';
+    }
+    toast('已清除 ' + keys.length + ' 个文件');
   }
 
   function addFiles(fileList) {
@@ -2230,7 +2327,7 @@ return He}()
   function refreshLibraryUI() {
     renderFileList();
     $('#fileCount').textContent = String(state.docs.length);
-    $('#btnClearFiles').disabled = state.docs.length === 0;
+    updateClearBtn();
     if (!state.docs.length) {
       $('#docName').textContent = 'MD Look';
       $('#docPath').textContent = '在本地浏览器中阅读 Markdown';
@@ -2275,6 +2372,7 @@ return He}()
     appendTreeNode(frag, tree, 0);
     nav.appendChild(frag);
     highlightCurrent();
+    syncSelectUI();
   }
 
   function appendTreeNode(container, node, depth) {
@@ -2322,12 +2420,40 @@ return He}()
     btn.className = 'file-item';
     btn.dataset.key = d.key;
     btn.title = d.rel;
-    btn.innerHTML = '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></svg>';
+
+    // 勾选框：只切换选中，不打开文档
+    const check = document.createElement('span');
+    check.className = 'file-check';
+    check.setAttribute('role', 'checkbox');
+    check.setAttribute('aria-checked', 'false');
+    check.setAttribute('tabindex', '-1');
+    check.innerHTML = '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>';
+    check.addEventListener('click', ev => {
+      ev.preventDefault();
+      ev.stopPropagation();
+      toggleSelect(d.key);
+    });
+    btn.appendChild(check);
+
+    const icon = document.createElement('span');
+    icon.className = 'file-icon';
+    icon.innerHTML = '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></svg>';
+    btn.appendChild(icon);
+
     const span = document.createElement('span');
     span.className = 'fname';
     span.textContent = d.name;
     btn.appendChild(span);
-    btn.addEventListener('click', () => openDoc(d.key));
+
+    btn.addEventListener('click', ev => {
+      // Ctrl / Cmd + 点击整行也能切换选中，方便批量操作
+      if (ev.ctrlKey || ev.metaKey) {
+        ev.preventDefault();
+        toggleSelect(d.key);
+        return;
+      }
+      openDoc(d.key);
+    });
     return btn;
   }
 
@@ -2354,6 +2480,7 @@ return He}()
     }
     nav.appendChild(box);
     highlightCurrent();
+    syncSelectUI();
   }
 
   function highlightCurrent() {
@@ -2591,8 +2718,8 @@ return He}()
     // 顶部已无「打开文件 / 打开文件夹」按钮：
     // 打开入口 = 双击空白处 / 拖放 / Ctrl+O / Ctrl+Shift+O
 
-    // 清除全部已加载的文件
-    $('#btnClearFiles').addEventListener('click', clearLibrary);
+    // 清除：只删除已勾选的文件
+    $('#btnClearFiles').addEventListener('click', clearSelected);
 
     // 空状态：整个空白区域双击选择文件（该区域没有任何可见 UI）
     $('#emptyState').addEventListener('dblclick', ev => {
