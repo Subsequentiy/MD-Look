@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="application-name" content="MD Look">
-<meta name="version" content="1.1.0">
+<meta name="version" content="1.2.0">
 <meta name="build" content="2026-11-12">
 <title>MD Look</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='5' fill='%230969da'/%3E%3Ctext x='12' y='17' font-size='10' font-family='Arial' font-weight='bold' fill='white' text-anchor='middle'%3EMD%3C/text%3E%3C/svg%3E">
@@ -35,6 +35,9 @@
   --border-strong: #d0d7de;
   --accent: #0969da;
   --accent-contrast: #ffffff;
+  --danger: #cf222e;
+  --danger-bg: rgba(207, 34, 46, .08);
+  --danger-border: rgba(207, 34, 46, .38);
   --code-bg: #f6f8fa;
   --code-border: #e3e6ea;
   --inline-code-bg: rgba(175, 184, 193, .25);
@@ -63,6 +66,9 @@ html[data-theme="dark"] {
   --border-strong: #3d444d;
   --accent: #58a6ff;
   --accent-contrast: #0d1117;
+  --danger: #ff7b72;
+  --danger-bg: rgba(248, 81, 73, .14);
+  --danger-border: rgba(248, 81, 73, .42);
   --code-bg: #161b22;
   --code-border: #30363d;
   --inline-code-bg: rgba(110, 118, 129, .35);
@@ -123,6 +129,7 @@ svg { display: block; }
 .tb-btn.icon-only { width: 32px; padding: 0; justify-content: center; }
 .tb-btn.active { background: var(--bg-active); color: var(--accent); }
 .tb-btn:disabled { opacity: .45; cursor: default; }
+.tb-btn.zoom { font-size: 12.5px; font-weight: 600; letter-spacing: -.02em; }
 .icon { width: 16px; height: 16px; flex: none; }
 
 .doc-title {
@@ -169,15 +176,24 @@ body.sidebar-collapsed .sidebar { margin-left: -289px; }
   padding: 1px 7px; border-radius: 999px; font-size: 11px;
 }
 .panel-title-right { display: flex; align-items: center; gap: 6px; }
+/* 清除按钮：默认低调，一旦有勾选就变成醒目的红色实心按钮 */
 .panel-clear {
-  width: 20px; height: 20px; padding: 0; border: 0; border-radius: 5px;
-  background: transparent; color: var(--muted); cursor: pointer;
+  width: 24px; height: 24px; padding: 0; border-radius: 6px;
+  border: 1px solid var(--border-strong);
+  background: var(--bg); color: var(--muted); cursor: pointer;
   display: inline-flex; align-items: center; justify-content: center;
-  transition: background .12s, color .12s;
+  transition: background .12s, color .12s, border-color .12s, box-shadow .12s;
 }
-.panel-clear:hover:not(:disabled) { background: var(--bg-hover); color: var(--accent); }
-.panel-clear:disabled { opacity: .3; cursor: default; }
-.panel-clear .icon { width: 13px; height: 13px; }
+.panel-clear .icon { width: 14px; height: 14px; }
+.panel-clear:disabled { opacity: .55; cursor: default; }
+.panel-clear:not(:disabled) {
+  color: var(--danger); border-color: var(--danger-border); background: var(--danger-bg);
+}
+.panel-clear:not(:disabled):hover {
+  color: #fff; background: var(--danger); border-color: var(--danger);
+  box-shadow: 0 1px 6px var(--danger-border);
+}
+.panel-clear:not(:disabled):active { transform: scale(.94); }
 .searchbar { padding: 10px 10px 4px; }
 .search-input-wrap { position: relative; display: flex; align-items: center; }
 .search-input-wrap .icon { position: absolute; left: 9px; width: 14px; height: 14px; color: var(--muted); pointer-events: none; }
@@ -200,11 +216,6 @@ body.sidebar-collapsed .sidebar { margin-left: -289px; }
 .file-section { flex: 1 1 auto; }
 .file-list { flex: 1 1 auto; overflow: auto; padding: 2px 8px 12px; }
 .tree-empty { color: var(--muted); font-size: 12.5px; padding: 10px 6px; line-height: 1.7; }
-.tree-empty kbd {
-  font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: 11px;
-  border: 1px solid var(--border-strong); border-bottom-width: 2px; border-radius: 4px;
-  padding: 0 4px; background: var(--bg);
-}
 details.tree-dir > summary {
   list-style: none; display: flex; align-items: center; gap: 4px;
   padding: 4px 6px; border-radius: 6px; cursor: pointer; user-select: none;
@@ -227,7 +238,8 @@ details.tree-dir > summary .icon { color: var(--muted); }
 .file-item .icon { color: var(--muted); flex: none; }
 .file-item.active .icon { color: var(--accent); }
 .file-item .fname { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.file-item .fdir { font-size: 11px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.file-item .fdir { font-size: 11px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-left: auto; padding-left: 8px; flex: none; }
+.file-item:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 
 /* 文件选中框 */
 .file-icon { display: inline-flex; flex: none; }
@@ -247,6 +259,7 @@ details.tree-dir > summary .icon { color: var(--muted); }
 .flat-heading { font-size: 11px; color: var(--muted); padding: 8px 8px 3px; font-weight: 600; letter-spacing: .04em; }
 
 .outline-section { flex: 0 1 auto; max-height: 42%; border-top: 1px solid var(--border); }
+.outline-section[hidden] { display: none; }
 .outline-list { overflow: auto; padding: 0 8px 10px; }
 .outline-item {
   display: block; width: 100%; text-align: left;
@@ -258,7 +271,6 @@ details.tree-dir > summary .icon { color: var(--muted); }
 .outline-item:hover { background: var(--bg-hover); color: var(--text); }
 .outline-item.active { color: var(--accent); background: var(--bg-hover); border-left-color: var(--accent); font-weight: 600; }
 .outline-item .ob { display: inline-block; min-width: 22px; color: var(--muted); font-size: 10.5px; font-family: ui-monospace, Consolas, monospace; }
-.outline-empty { color: var(--muted); font-size: 12px; padding: 6px 8px 10px; }
 
 .sidebar-foot {
   flex: none; padding: 8px 12px; border-top: 1px solid var(--border);
@@ -270,6 +282,7 @@ details.tree-dir > summary .icon { color: var(--muted); }
   background: var(--bg-active); color: var(--accent);
   font-size: 10.5px; font-weight: 600; letter-spacing: .02em;
 }
+.sidebar-foot.plain { border-top: 0; padding-top: 0; }
 
 /* ============ 内容区 ============ */
 .content-wrap { flex: 1 1 auto; min-width: 0; overflow: auto; position: relative; scroll-behavior: smooth; }
@@ -332,6 +345,8 @@ article.markdown-body > :first-child { margin-top: 0 !important; }
   border: 1px dashed var(--border-strong); background: var(--code-bg); box-shadow: none;
   font-size: 12px; color: var(--muted);
 }
+.markdown-body img.zoomable { cursor: zoom-in; transition: opacity .15s; }
+.markdown-body img.zoomable:hover { opacity: .88; }
 .markdown-body code {
   font-family: ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace;
   font-size: .875em; padding: .18em .4em; border-radius: 5px;
@@ -365,6 +380,11 @@ article.markdown-body > :first-child { margin-top: 0 !important; }
 .markdown-body .table-wrap { overflow-x: auto; margin: 0 0 1.2em; border: 1px solid var(--border); border-radius: 10px; }
 .markdown-body table { border-collapse: collapse; width: 100%; font-size: .95em; }
 .markdown-body th, .markdown-body td { padding: 8px 13px; border-bottom: 1px solid var(--border); text-align: left; vertical-align: top; }
+/* marked 用 align 属性表达表格对齐（|:--|:-:|--:|），
+   上面的 text-align:left 会盖掉它，这里按属性选择器补回来 */
+.markdown-body th[align="left"], .markdown-body td[align="left"] { text-align: left; }
+.markdown-body th[align="center"], .markdown-body td[align="center"] { text-align: center; }
+.markdown-body th[align="right"], .markdown-body td[align="right"] { text-align: right; }
 .markdown-body th { background: var(--bg-soft); font-weight: 650; white-space: nowrap; }
 .markdown-body tr:last-child td { border-bottom: 0; }
 .markdown-body tbody tr:nth-child(2n) { background: var(--bg-soft); }
@@ -462,11 +482,8 @@ html[data-theme="dark"] #toast { background: #e6edf3; color: #0d1117; }
 }
 .markdown-body .render-error pre { margin: 10px 0 0; }
 
-.menu-btn { display: none; }
-
 /* ============ 响应式 ============ */
 @media (max-width: 860px) {
-  .menu-btn { display: inline-flex; }
   .sidebar {
     position: absolute; left: 0; top: 0; bottom: 0; z-index: 20;
     box-shadow: var(--shadow); transform: translateX(-102%);
@@ -489,14 +506,17 @@ html[data-theme="dark"] #toast { background: #e6edf3; color: #0d1117; }
 <body>
 <div id="app">
   <header class="topbar">
-    <button class="tb-btn icon-only menu-btn" id="btnMenu" title="显示/隐藏侧栏" aria-label="侧栏"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg></button>
+    <button class="tb-btn icon-only" id="btnMenu" title="显示/隐藏侧栏" aria-label="显示/隐藏侧栏"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg></button>
     <div class="doc-title">
       <div class="name" id="docName">MD Look</div>
       <div class="path" id="docPath">在本地浏览器中阅读 Markdown</div>
     </div>
     <div class="toolbar-group">
-      <button class="tb-btn icon-only" id="btnFontDown" title="缩小字号">A−</button>
-      <button class="tb-btn icon-only" id="btnFontUp" title="放大字号">A+</button>
+      <button class="tb-btn icon-only zoom" id="btnFontDown" title="缩小字号" aria-label="缩小字号">A−</button>
+      <button class="tb-btn icon-only zoom" id="btnFontUp" title="放大字号" aria-label="放大字号">A+</button>
+      <button class="tb-btn icon-only" id="btnFontReset" title="重置字号" aria-label="重置字号">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 2.64-6.36"/><path d="M3 4v5h5"/></svg>
+      </button>
     </div>
     <div class="toolbar-group">
       <button class="tb-btn icon-only" id="btnSource" title="切换源码视图">
@@ -531,12 +551,12 @@ html[data-theme="dark"] #toast { background: #e6edf3; color: #0d1117; }
         </div>
         <nav class="file-list" id="fileList"></nav>
       </div>
-      <div class="sidebar-section outline-section">
+      <div class="sidebar-section outline-section" id="outlineSection" hidden>
         <div class="panel-title"><span>大纲</span></div>
         <nav class="outline-list" id="outlineList"></nav>
       </div>
       <div class="sidebar-foot" id="docMeta">全部在本地浏览器中完成 · 不上传任何文件</div>
-      <div class="sidebar-foot" id="appFoot" style="border-top:0;padding-top:0">MD Look<span class="ver" id="appVersion">v1.1.0</span></div>
+      <div class="sidebar-foot plain" id="appFoot">MD Look<span class="ver" id="appVersion">v1.2.0</span></div>
     </aside>
 
     <div class="content-wrap" id="contentWrap">
@@ -1829,8 +1849,12 @@ return He}()
   }
 
   /* ---------------- 偏好 ---------------- */
+  const FONT_MIN = 13;
+  const FONT_DEFAULT = 16;
+  const FONT_MAX = 22;
+
   const prefs = {
-    fontSize: 16,
+    fontSize: FONT_DEFAULT,
     sidebar: true,
     view: 'preview'
   };
@@ -1840,9 +1864,14 @@ return He}()
       if (raw) Object.assign(prefs, JSON.parse(raw));
     } catch (e) { /* file:// 下可能被禁用 */ }
     delete prefs.theme; // 深浅色改为跟随系统，清掉旧版本残留值
-    const fs = Number(prefs.fontSize);
-    prefs.fontSize = isFinite(fs) ? Math.min(22, Math.max(13, fs)) : 16;
+    prefs.fontSize = clampFont(prefs.fontSize);
     prefs.sidebar = prefs.sidebar !== false;
+    prefs.view = prefs.view === 'source' ? 'source' : 'preview';
+  }
+  function clampFont(v) {
+    const n = Math.round(Number(v));
+    if (!isFinite(n)) return FONT_DEFAULT;
+    return Math.min(FONT_MAX, Math.max(FONT_MIN, n));
   }
   function savePrefs() {
     try { localStorage.setItem(PREF_KEY, JSON.stringify(prefs)); } catch (e) { /* ignore */ }
@@ -1962,13 +1991,13 @@ return He}()
     // 链接处理（文档间跳转 / 外链 / 锚点）
     bindLinks(article, doc);
 
-    // 任务列表样式
+    // 任务列表样式（每篇里可能有好几个）
     $$('li', article).forEach(li => {
-      const cb = li.querySelector(':scope > input[type="checkbox"]');
-      if (cb) li.classList.add('task-list-item');
+      if (li.querySelector(':scope > input[type="checkbox"]')) li.classList.add('task-list-item');
     });
-    const firstUl = article.querySelector('ul');
-    if (firstUl && firstUl.querySelector('input[type="checkbox"]')) firstUl.classList.add('task-list');
+    $$('ul', article).forEach(ul => {
+      if (ul.querySelector(':scope > li > input[type="checkbox"]')) ul.classList.add('task-list');
+    });
 
     return performance.now() - t0;
   }
@@ -2021,17 +2050,28 @@ return He}()
     });
   }
 
+  // 图片点击放大：远程图片、data:、以及本地 blob 图片都挂上
+  function attachZoom(img, name) {
+    img.classList.add('zoomable');
+    if (!img.title) img.title = '点击放大';
+    img.addEventListener('click', () => showImageLightbox(img.currentSrc || img.src, name || img.alt || '图片'));
+  }
+
   function resolveImages(article, doc) {
     let missCount = 0;
     $$('img', article).forEach(img => {
       const raw = (img.getAttribute('src') || '').trim();
       if (!raw) return;
-      if (/^(https?:|data:|blob:)/i.test(raw)) return;
+      if (/^(https?:|data:|blob:)/i.test(raw)) {
+        attachZoom(img, img.alt || '图片');
+        return;
+      }
       const resolved = lookupAsset(doc, raw);
       if (resolved) {
         img.src = assetUrl(resolved);
         img.dataset.originalSrc = raw;
         img.loading = 'lazy';
+        attachZoom(img, basename(raw) || img.alt || '图片');
       } else {
         missCount++;
         const span = document.createElement('span');
@@ -2089,8 +2129,11 @@ return He}()
         .replace(/[^\w\u3400-\u9fff\uac00-\ud7af-]+/g, '-')
         .replace(/^-+|-+$/g, '');
       if (!base) base = 'section';
+      // 生成唯一 id：既要避开本文其它标题，也要避开页面自身的 id（如 content / fileList）
       let id = base, n = 1;
-      while (used.has(id)) { id = base + '-' + (n++); }
+      while (used.has(id) || (document.getElementById(id) && document.getElementById(id) !== h)) {
+        id = base + '-' + (n++);
+      }
       used.add(id);
       h.id = id;
       const lvl = Number(h.tagName.charAt(1));
@@ -2173,13 +2216,22 @@ return He}()
     cap.textContent = name + '（点击任意处关闭）';
     mask.appendChild(img);
     mask.appendChild(cap);
-    mask.addEventListener('click', () => mask.remove());
-    const onKey = ev => { if (ev.key === 'Escape') { mask.remove(); document.removeEventListener('keydown', onKey); } };
+
+    // 关闭时一定要摘掉 keydown 监听，否则反复开关会越积越多
+    function close() {
+      document.removeEventListener('keydown', onKey);
+      mask.remove();
+    }
+    function onKey(ev) { if (ev.key === 'Escape') close(); }
+    mask.addEventListener('click', close);
     document.addEventListener('keydown', onKey);
     document.body.appendChild(mask);
   }
 
   /* ---------------- 文件装载 ---------------- */
+  let docSeq = 0;   // 文档 key 的单调递增序号，删除文件后也不会重复
+  let openToken = 0; // 防止快速连续打开时，慢的那次覆盖掉最新内容
+
   function isMarkdownFile(f) {
     return MD_RE.test(f.name);
   }
@@ -2226,13 +2278,6 @@ return He}()
     });
   }
 
-  function selectAll(on) {
-    state.selected.clear();
-    if (on) state.docs.forEach(d => state.selected.add(d.key));
-    syncSelectUI();
-    updateClearBtn();
-  }
-
   // 从库里移除单个文档（含它的资源映射与 blob url）
   function removeDoc(key) {
     const idx = state.docs.findIndex(d => d.key === key);
@@ -2268,12 +2313,12 @@ return He}()
     if (curRemoved) {
       $('#content').innerHTML = '';
       $('#sourceView').value = '';
-      if (document.body.classList.contains('source-mode')) setSourceMode(false);
+      // 只改界面，不动用户记住的「源码/预览」偏好
+      applySourceMode(false);
       state.current = null;
     }
 
     refreshLibraryUI();
-    renderFileList();
 
     if (curRemoved) {
       if (state.docs.length) openDoc(state.docs[0].key);
@@ -2289,7 +2334,6 @@ return He}()
     if (!files.length) return { added, requested };
 
     const bySig = new Map(state.docs.map(d => [d.sig, d]));
-    let seq = state.docs.length;
 
     for (const file of files) {
       const rel = (file._relOverride
@@ -2302,8 +2346,10 @@ return He}()
       state.assets.set(low, file);
       file._relLower = low;
       const bn = basename(low);
-      if (!state.assetBase.has(bn)) state.assetBase.set(bn, []);
-      state.assetBase.get(bn).push(file);
+      let bucket = state.assetBase.get(bn);
+      if (!bucket) { bucket = []; state.assetBase.set(bn, bucket); }
+      // 同一个文件重复载入时不要重复入桶
+      if (bucket.indexOf(file) < 0) bucket.push(file);
 
       if (!isMarkdownFile(file)) continue;
 
@@ -2311,7 +2357,8 @@ return He}()
       const exist = bySig.get(sig);
       if (exist) { requested.push(exist); continue; }
 
-      const key = rel.toLowerCase() + '|' + (seq++);
+      // key 只在本次会话内唯一即可；用单调递增计数器，避免删除后重新加回时撞 key
+      const key = rel.toLowerCase() + '|' + (docSeq++);
       const doc = { key, sig, rel, name: file.name, file };
       state.docs.push(doc);
       state.docMap.set(key, doc);
@@ -2332,9 +2379,11 @@ return He}()
       $('#docName').textContent = 'MD Look';
       $('#docPath').textContent = '在本地浏览器中阅读 Markdown';
       $('#docMeta').textContent = '全部在本地浏览器中完成 · 不上传任何文件';
+      $('#content').innerHTML = '';
       $('#content').hidden = true;
       $('#emptyState').hidden = false;
-      $('#outlineList').innerHTML = '<div class="outline-empty">打开文档后显示大纲</div>';
+      state.headings = [];
+      renderOutline();
       $('#btnCopy').disabled = true;
       state.current = null;
       document.title = 'MD Look';
@@ -2347,7 +2396,7 @@ return He}()
     nav.innerHTML = '';
 
     if (!state.docs.length) {
-      nav.innerHTML = '<div class="tree-empty">还没有文件。<br>在右侧空白处<kbd>双击</kbd>选择文件，或把文件拖进窗口。</div>';
+      nav.innerHTML = '';
       return;
     }
 
@@ -2415,37 +2464,40 @@ return He}()
   }
 
   function fileItemEl(d) {
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.className = 'file-item';
-    btn.dataset.key = d.key;
-    btn.title = d.rel;
+    // 用 div[role=button] 而不是 <button>：里面还要嵌一个 role=checkbox 的勾选框，
+    // 真实 <button> 里套交互元素是非法结构，屏幕阅读器会读错。
+    const row = document.createElement('div');
+    row.className = 'file-item';
+    row.dataset.key = d.key;
+    row.title = d.rel;
+    row.setAttribute('role', 'button');
+    row.setAttribute('tabindex', '0');
 
     // 勾选框：只切换选中，不打开文档
     const check = document.createElement('span');
     check.className = 'file-check';
     check.setAttribute('role', 'checkbox');
     check.setAttribute('aria-checked', 'false');
-    check.setAttribute('tabindex', '-1');
+    check.setAttribute('aria-label', '选择 ' + d.name);
     check.innerHTML = '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>';
     check.addEventListener('click', ev => {
       ev.preventDefault();
       ev.stopPropagation();
       toggleSelect(d.key);
     });
-    btn.appendChild(check);
+    row.appendChild(check);
 
     const icon = document.createElement('span');
     icon.className = 'file-icon';
     icon.innerHTML = '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></svg>';
-    btn.appendChild(icon);
+    row.appendChild(icon);
 
     const span = document.createElement('span');
     span.className = 'fname';
     span.textContent = d.name;
-    btn.appendChild(span);
+    row.appendChild(span);
 
-    btn.addEventListener('click', ev => {
+    row.addEventListener('click', ev => {
       // Ctrl / Cmd + 点击整行也能切换选中，方便批量操作
       if (ev.ctrlKey || ev.metaKey) {
         ev.preventDefault();
@@ -2454,7 +2506,14 @@ return He}()
       }
       openDoc(d.key);
     });
-    return btn;
+    row.addEventListener('keydown', ev => {
+      if (ev.key === 'Enter' || ev.key === ' ' || ev.key === 'Spacebar') {
+        ev.preventDefault();
+        if (ev.ctrlKey || ev.metaKey) toggleSelect(d.key);
+        else openDoc(d.key);
+      }
+    });
+    return row;
   }
 
   function renderFlatList(nav) {
@@ -2517,17 +2576,21 @@ return He}()
     $('#content').hidden = false;
     $('#btnCopy').disabled = false;
 
-    // 读取
+    // 读文件是异步的：连续点两个文件时，先发的那次可能后返回。
+    // 用 token 判断自己是否还是「最新一次打开」，避免旧内容覆盖新内容。
+    const token = ++openToken;
+
     let text;
     try {
       text = await readFileText(doc.file);
     } catch (err) {
+      if (token !== openToken) return;
       $('#content').innerHTML = '<div class="render-error"><strong>无法读取文件</strong><pre>' + escHtml(String(err)) + '</pre></div>';
       return;
     }
+    if (token !== openToken) return;   // 已经被后一次打开取代，丢弃这次结果
 
     const wrap = $('#contentWrap');
-    const prevTop = wrap.scrollTop;
     wrap.scrollTop = 0;
 
     // 大文件给个提示
@@ -2549,10 +2612,8 @@ return He}()
     wrap.scrollTop = typeof remembered === 'number' ? remembered : 0;
     updateProgress();
 
-    // 源码视图
-    if (document.body.classList.contains('source-mode')) {
-      $('#sourceView').value = text;
-    }
+    // 记住的视图模式（源码 / 预览）在这里落地
+    applySourceMode(prefs.view === 'source');
 
     if (window.innerWidth <= 860) {
       document.body.classList.remove('sidebar-open');
@@ -2598,14 +2659,18 @@ return He}()
   /* ---------------- 大纲 ---------------- */
   function renderOutline() {
     const nav = $('#outlineList');
+    const section = $('#outlineSection');
     nav.innerHTML = '';
-    const hs = state.headings;
-    if (!hs.length) {
-      nav.innerHTML = '<div class="outline-empty">本文没有标题</div>';
+
+    // 没有打开文档、或文档里没有标题时，整个大纲区直接隐藏（不显示任何提示文字）
+    if (!state.current || !state.headings.length) {
+      if (section) section.hidden = true;
       return;
     }
+    if (section) section.hidden = false;
+
     const frag = document.createDocumentFragment();
-    hs.forEach(h => {
+    state.headings.forEach(h => {
       const btn = document.createElement('button');
       btn.type = 'button';
       btn.className = 'outline-item';
@@ -2699,18 +2764,27 @@ return He}()
 
   function applyFontSize() {
     document.documentElement.style.setProperty('--content-font', prefs.fontSize + 'px');
-    $('#btnFontDown').disabled = prefs.fontSize <= 13;
-    $('#btnFontUp').disabled = prefs.fontSize >= 22;
+    $('#btnFontDown').disabled = prefs.fontSize <= FONT_MIN;
+    $('#btnFontUp').disabled = prefs.fontSize >= FONT_MAX;
+    const reset = $('#btnFontReset');
+    // 已是默认字号时重置按钮不可用，避免点了没反应
+    if (reset) reset.disabled = prefs.fontSize === FONT_DEFAULT;
   }
 
   function setSourceMode(on) {
-    if (on && !state.current) { toast('请先打开一个 Markdown 文件'); return; }
+    if (on && !state.current) { toast('请先打开一个 Markdown 文件'); return false; }
+    applySourceMode(on);
+    prefs.view = on ? 'source' : 'preview';
+    savePrefs();
+    return true;
+  }
+
+  // 只改界面，不写偏好；用于「清空文档」等不该覆盖用户偏好的场合
+  function applySourceMode(on) {
     document.body.classList.toggle('source-mode', !!on);
     $('#sourceView').hidden = !on;
     $('#btnSource').classList.toggle('active', !!on);
     $('#btnSource').title = on ? '返回预览' : '查看 Markdown 源码';
-    prefs.view = on ? 'source' : 'preview';
-    savePrefs();
   }
 
   /* ---------------- 事件绑定 ---------------- */
@@ -2764,12 +2838,18 @@ return He}()
     });
 
     $('#btnFontUp').addEventListener('click', () => {
-      prefs.fontSize = Math.min(22, prefs.fontSize + 1);
+      prefs.fontSize = Math.min(FONT_MAX, prefs.fontSize + 1);
       applyFontSize(); savePrefs();
     });
     $('#btnFontDown').addEventListener('click', () => {
-      prefs.fontSize = Math.max(13, prefs.fontSize - 1);
+      prefs.fontSize = Math.max(FONT_MIN, prefs.fontSize - 1);
       applyFontSize(); savePrefs();
+    });
+    $('#btnFontReset').addEventListener('click', () => {
+      if (prefs.fontSize === FONT_DEFAULT) return;
+      prefs.fontSize = FONT_DEFAULT;
+      applyFontSize(); savePrefs();
+      toast('字号已重置为 ' + FONT_DEFAULT + 'px');
     });
     $('#btnSource').addEventListener('click', () => setSourceMode(!document.body.classList.contains('source-mode')));
     $('#btnCopy').addEventListener('click', () => {
@@ -2848,19 +2928,20 @@ return He}()
     // 快捷键
     document.addEventListener('keydown', ev => {
       const tag = (ev.target && ev.target.tagName) || '';
-      const typing = tag === 'INPUT' || tag === 'TEXTAREA' || ev.target.isContentEditable;
-      if ((ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() === 'o') {
+      const typing = tag === 'INPUT' || tag === 'TEXTAREA' || (ev.target && ev.target.isContentEditable);
+      const mod = ev.ctrlKey || ev.metaKey;
+
+      if (mod && ev.key.toLowerCase() === 'o') {
         ev.preventDefault();
         if (ev.shiftKey) $('#dirInput').click();
         else $('#fileInput').click();
         return;
       }
-      if ((ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() === 'p') {
-        // 打印功能已移除，但保留 Ctrl+P 打开浏览器打印的默认行为
-        return;
-      }
-      if (!typing && (ev.key === '/' || ev.key === 'f' && (ev.ctrlKey || ev.metaKey))) {
-        if (ev.ctrlKey || ev.metaKey) return;
+      // Ctrl/Cmd+P 交回浏览器（打印）
+      if (mod && ev.key.toLowerCase() === 'p') return;
+
+      // 按 / 聚焦文件筛选框（Ctrl+F 留给浏览器自己的查找）
+      if (!typing && !mod && ev.key === '/') {
         ev.preventDefault();
         $('#searchInput').focus();
         $('#searchInput').select();
@@ -2868,15 +2949,11 @@ return He}()
       }
       if (ev.key === 'Escape') {
         if (document.body.classList.contains('sidebar-open')) document.body.classList.remove('sidebar-open');
+        // 触发灯箱自己的 close()，确保 keydown 监听被摘掉
         const lb = document.querySelector('.lightbox');
-        if (lb) lb.remove();
+        if (lb) lb.click();
       }
     });
-
-    // 拖入 .md 到窗口时防止浏览器直接打开文件
-    // （上面的 drop 处理器已经 preventDefault，这里只兜底非文件拖拽）
-    window.addEventListener('dragover', ev => ev.preventDefault());
-    window.addEventListener('drop', ev => ev.preventDefault());
   }
 
   async function collectDroppedFiles(dt) {
@@ -2948,7 +3025,6 @@ return He}()
     const added = result.added.length;
     const requested = result.requested;
     refreshLibraryUI();
-    renderFileList();
 
     if (!requested.length) {
       if (!state.docs.length) toast('没有识别到 .md / .txt 文件');
@@ -2978,9 +3054,8 @@ return He}()
     configureMarked();
     bindEvents();
     refreshLibraryUI();
-    renderFileList();
-    $('#outlineList').innerHTML = '<div class="outline-empty">打开文档后显示大纲</div>';
-    if (prefs.view === 'source') setSourceMode(true);
+    // 没有文档时不进源码视图（prefs.view 会在打开文档时生效）
+    applySourceMode(false);
     window.addEventListener('beforeunload', () => {
       state.urls.forEach(u => { try { URL.revokeObjectURL(u); } catch (e) {} });
     });
