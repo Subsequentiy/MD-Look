@@ -2288,16 +2288,23 @@ return He}()
     state.selected.delete(key);
     state.scrollMemory.delete(key);
 
-    const low = doc.rel.toLowerCase();
-    const url = state.urls.get(low);
-    if (url) { try { URL.revokeObjectURL(url); } catch (e) { /* ignore */ } state.urls.delete(low); }
-    state.assets.delete(low);
-    const bn = basename(low);
-    const arr = state.assetBase.get(bn);
-    if (arr) {
-      const next = arr.filter(f => f !== doc.file);
-      if (next.length) state.assetBase.set(bn, next);
-      else state.assetBase.delete(bn);
+    // 同一目录下的其它文档还会用到同样的相对图片（pic.png 之类），
+    // 这时候不能清资源映射，也不能 revoke blob url，否则别的文档图片就裂了。
+    // 目录里已经没有别的文档了，才安全地回收。
+    const dir = dirname(doc.rel).toLowerCase();
+    const stillUsed = state.docs.some(d => dirname(d.rel).toLowerCase() === dir);
+    if (!stillUsed) {
+      const low = doc.rel.toLowerCase();
+      const url = state.urls.get(low);
+      if (url) { try { URL.revokeObjectURL(url); } catch (e) { /* ignore */ } state.urls.delete(low); }
+      state.assets.delete(low);
+      const bn = basename(low);
+      const arr = state.assetBase.get(bn);
+      if (arr) {
+        const next = arr.filter(f => f !== doc.file);
+        if (next.length) state.assetBase.set(bn, next);
+        else state.assetBase.delete(bn);
+      }
     }
     return doc;
   }
@@ -2319,6 +2326,14 @@ return He}()
     }
 
     refreshLibraryUI();
+
+    if (!state.docs.length) {
+      // 一篇文档都不剩了，图片等资源的映射和 blob url 也一并回收
+      state.assets.clear();
+      state.assetBase.clear();
+      state.urls.forEach(u => { try { URL.revokeObjectURL(u); } catch (e) { /* ignore */ } });
+      state.urls.clear();
+    }
 
     if (curRemoved) {
       if (state.docs.length) openDoc(state.docs[0].key);
