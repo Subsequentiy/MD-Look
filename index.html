@@ -118,17 +118,14 @@ svg { display: block; }
 .tb-btn:hover { background: var(--bg-hover); color: var(--text); }
 .tb-btn:active { background: var(--bg-active); }
 .tb-btn.icon-only { width: 32px; padding: 0; justify-content: center; }
-.tb-btn.primary { border-color: var(--border-strong); background: var(--bg); color: var(--text); }
-.tb-btn.primary:hover { border-color: var(--accent); color: var(--accent); }
 .tb-btn.active { background: var(--bg-active); color: var(--accent); }
-.tb-btn .label { font-size: 13px; }
 .tb-btn:disabled { opacity: .45; cursor: default; }
 .icon { width: 16px; height: 16px; flex: none; }
 
 .doc-title {
   flex: 1 1 auto; min-width: 0;
   display: flex; flex-direction: column; justify-content: center;
-  padding: 0 6px;
+  padding: 0 6px 0 12px;
 }
 .doc-title .name {
   font-size: 13.5px; font-weight: 600; color: var(--text);
@@ -168,6 +165,16 @@ body.sidebar-collapsed .sidebar { margin-left: -289px; }
   background: var(--bg-active); color: var(--accent);
   padding: 1px 7px; border-radius: 999px; font-size: 11px;
 }
+.panel-title-right { display: flex; align-items: center; gap: 6px; }
+.panel-clear {
+  width: 20px; height: 20px; padding: 0; border: 0; border-radius: 5px;
+  background: transparent; color: var(--muted); cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center;
+  transition: background .12s, color .12s;
+}
+.panel-clear:hover:not(:disabled) { background: var(--bg-hover); color: var(--accent); }
+.panel-clear:disabled { opacity: .3; cursor: default; }
+.panel-clear .icon { width: 13px; height: 13px; }
 .searchbar { padding: 10px 10px 4px; }
 .search-input-wrap { position: relative; display: flex; align-items: center; }
 .search-input-wrap .icon { position: absolute; left: 9px; width: 14px; height: 14px; color: var(--muted); pointer-events: none; }
@@ -449,10 +456,7 @@ html[data-theme="dark"] #toast { background: #e6edf3; color: #0d1117; }
   }
   body.sidebar-open .sidebar-backdrop { opacity: 1; pointer-events: auto; }
   article.markdown-body { padding: 24px 18px 110px; }
-  .tb-btn .label { display: none; }
   .tb-btn { width: 34px; padding: 0; justify-content: center; }
-  .tb-btn.primary { width: auto; padding: 0 10px; }
-  .tb-btn.primary .label { display: inline; }
   .doc-title .path { display: none; }
   #sourceView { padding: 18px; }
   .outline-section { max-height: 34%; }
@@ -463,16 +467,6 @@ html[data-theme="dark"] #toast { background: #e6edf3; color: #0d1117; }
 <div id="app">
   <header class="topbar">
     <button class="tb-btn icon-only menu-btn" id="btnMenu" title="显示/隐藏侧栏" aria-label="侧栏"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg></button>
-    <div class="toolbar-group">
-      <button class="tb-btn primary" id="btnOpenFile" title="打开 Markdown 文件 (Ctrl+O)">
-        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></svg>
-        <span class="label">打开文件</span>
-      </button>
-      <button class="tb-btn" id="btnOpenDir" title="打开文件夹 (Ctrl+Shift+O)">
-        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
-        <span class="label">打开文件夹</span>
-      </button>
-    </div>
     <div class="doc-title">
       <div class="name" id="docName">MD Look</div>
       <div class="path" id="docPath">在本地浏览器中阅读 Markdown</div>
@@ -503,7 +497,15 @@ html[data-theme="dark"] #toast { background: #e6edf3; color: #0d1117; }
         </div>
       </div>
       <div class="sidebar-section file-section">
-        <div class="panel-title"><span>文件</span><span class="count" id="fileCount">0</span></div>
+        <div class="panel-title">
+          <span>文件</span>
+          <span class="panel-title-right">
+            <span class="count" id="fileCount">0</span>
+            <button class="panel-clear" id="btnClearFiles" title="清除全部文件" aria-label="清除全部文件" disabled>
+              <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>
+            </button>
+          </span>
+        </div>
         <nav class="file-list" id="fileList"></nav>
       </div>
       <div class="sidebar-section outline-section">
@@ -2168,6 +2170,21 @@ return He}()
     state.current = null;
   }
 
+  // 侧栏「清除」按钮：把已加载的文件和当前文档全部清掉，回到初始空白状态
+  function clearLibrary() {
+    if (!state.docs.length) return;
+    resetLibrary();
+    state.query = '';
+    const si = $('#searchInput');
+    if (si) si.value = '';
+    $('#searchClear').classList.remove('show');
+    $('#content').innerHTML = '';
+    $('#sourceView').value = '';
+    if (document.body.classList.contains('source-mode')) setSourceMode(false);
+    refreshLibraryUI();
+    toast('已清除全部文件');
+  }
+
   function addFiles(fileList) {
     const files = Array.prototype.slice.call(fileList);
     const added = [];
@@ -2213,6 +2230,7 @@ return He}()
   function refreshLibraryUI() {
     renderFileList();
     $('#fileCount').textContent = String(state.docs.length);
+    $('#btnClearFiles').disabled = state.docs.length === 0;
     if (!state.docs.length) {
       $('#docName').textContent = 'MD Look';
       $('#docPath').textContent = '在本地浏览器中阅读 Markdown';
@@ -2570,8 +2588,11 @@ return He}()
 
   /* ---------------- 事件绑定 ---------------- */
   function bindEvents() {
-    $('#btnOpenFile').addEventListener('click', () => $('#fileInput').click());
-    $('#btnOpenDir').addEventListener('click', () => $('#dirInput').click());
+    // 顶部已无「打开文件 / 打开文件夹」按钮：
+    // 打开入口 = 双击空白处 / 拖放 / Ctrl+O / Ctrl+Shift+O
+
+    // 清除全部已加载的文件
+    $('#btnClearFiles').addEventListener('click', clearLibrary);
 
     // 空状态：整个空白区域双击选择文件（该区域没有任何可见 UI）
     $('#emptyState').addEventListener('dblclick', ev => {
